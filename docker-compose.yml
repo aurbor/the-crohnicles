@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3002:3002"
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CONSULTANT_PASSWORD: ${CONSULTANT_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET}
+      DATABASE_PATH: /data/crohnicles.db
+      NODE_ENV: production
+    volumes:
+      - crohnicles_data:/data
+    restart: unless-stopped
+
+volumes:
+  crohnicles_data:
