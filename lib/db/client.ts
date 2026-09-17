@@ -28,7 +28,7 @@ function getDb(): DrizzleDb {
 }
 
 export const db: DrizzleDb = new Proxy({} as DrizzleDb, {
-  get(_target, prop, _receiver) {
+  get(_target, prop) {
     const real = getDb();
     const value = Reflect.get(real as object, prop, real);
     return typeof value === "function" ? value.bind(real) : value;

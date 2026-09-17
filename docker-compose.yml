@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "3002:3002"
+      - "3003:3002"
     environment:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       CONSULTANT_PASSWORD: ${CONSULTANT_PASSWORD}

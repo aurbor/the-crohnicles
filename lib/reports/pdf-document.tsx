@@ -1,5 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { format, parseISO } from "date-fns";
+import { ACTIVITY_LABELS } from "@/lib/activity/estimate";
+import type { CalorieTargets } from "@/lib/calorie-targets";
 import type { ReportsData } from "./aggregate";
 
 const styles = StyleSheet.create({
@@ -54,7 +56,17 @@ function NameCountTable({ rows }: { rows: { name: string; count: number }[] }) {
   );
 }
 
-export function ReportPdfDocument({ data }: { data: ReportsData }) {
+export function ReportPdfDocument({
+  data,
+  targets,
+}: {
+  data: ReportsData;
+  targets: CalorieTargets;
+}) {
+  const avgDeficit =
+    targets.bmr === null
+      ? null
+      : Math.round(targets.bmr + data.averages.avgBurned - data.averages.avgCalories);
   const moodLabel: Record<string, string> = { happy: "Good", content: "Okay", unhappy: "Rough" };
   const symptomsWithBristol = data.symptomSeries.filter((s) => s.bristolScale !== null);
   const avgBristol = symptomsWithBristol.length
@@ -92,6 +104,31 @@ export function ReportPdfDocument({ data }: { data: ReportsData }) {
           <StatTile label="Food pieces / day" value={`${data.averages.avgFoodPerDay}`} />
           <StatTile label="Active days" value={`${data.activeDayCount} / ${data.totalDays}`} />
         </View>
+
+        <Text style={styles.sectionTitle}>Activity &amp; energy balance</Text>
+        <View style={styles.statsRow}>
+          <StatTile label="Burned / day" value={`${data.averages.avgBurned} kcal`} />
+          <StatTile label="Net / day" value={`${data.averages.avgNet} kcal`} />
+          {avgDeficit !== null && (
+            <StatTile
+              label={avgDeficit >= 0 ? "Avg deficit / day" : "Avg surplus / day"}
+              value={`${Math.abs(avgDeficit)} kcal`}
+            />
+          )}
+          <StatTile label="Miles logged" value={`${data.activity.totalMiles}`} />
+          <StatTile label="Total burned" value={`${data.activity.totalBurned} kcal`} />
+          {targets.suggestedCalories !== null && (
+            <StatTile label="Daily target" value={`${targets.suggestedCalories} kcal`} />
+          )}
+        </View>
+        {data.activity.byType.length > 0 && (
+          <NameCountTable
+            rows={data.activity.byType.map((a) => ({
+              name: `${ACTIVITY_LABELS[a.type]} — ${a.miles} miles, ${a.burned} kcal`,
+              count: a.count,
+            }))}
+          />
+        )}
 
         <Text style={styles.sectionTitle}>Drink preference</Text>
         <NameCountTable rows={data.drinkFrequency} />

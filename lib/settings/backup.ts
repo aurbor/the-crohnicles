@@ -7,6 +7,7 @@ import {
   symptomEntries,
   journalEntries,
   weightEntries,
+  activityEntries,
   settings,
 } from "@/lib/db/schema";
 
@@ -20,6 +21,8 @@ export interface BackupData {
   symptomEntries: (typeof symptomEntries.$inferSelect)[];
   journalEntries: (typeof journalEntries.$inferSelect)[];
   weightEntries: (typeof weightEntries.$inferSelect)[];
+  /** Optional: backups taken before activity logging existed won't have it. */
+  activityEntries?: (typeof activityEntries.$inferSelect)[];
   settings: (typeof settings.$inferSelect)[];
 }
 
@@ -32,6 +35,7 @@ export async function exportAllData(): Promise<BackupData> {
     symptomRows,
     journalRows,
     weightRows,
+    activityRows,
     settingsRows,
   ] = await Promise.all([
     db.select().from(items),
@@ -41,6 +45,7 @@ export async function exportAllData(): Promise<BackupData> {
     db.select().from(symptomEntries),
     db.select().from(journalEntries),
     db.select().from(weightEntries),
+    db.select().from(activityEntries),
     db.select().from(settings),
   ]);
 
@@ -54,6 +59,7 @@ export async function exportAllData(): Promise<BackupData> {
     symptomEntries: symptomRows,
     journalEntries: journalRows,
     weightEntries: weightRows,
+    activityEntries: activityRows,
     settings: settingsRows,
   };
 }
@@ -69,6 +75,7 @@ export async function importAllData(data: BackupData): Promise<void> {
     tx.delete(symptomEntries).run();
     tx.delete(journalEntries).run();
     tx.delete(weightEntries).run();
+    tx.delete(activityEntries).run();
     tx.delete(medications).run();
     tx.delete(items).run();
     tx.delete(settings).run();
@@ -81,6 +88,7 @@ export async function importAllData(data: BackupData): Promise<void> {
     if (data.symptomEntries.length) tx.insert(symptomEntries).values(data.symptomEntries).run();
     if (data.journalEntries.length) tx.insert(journalEntries).values(data.journalEntries).run();
     if (data.weightEntries.length) tx.insert(weightEntries).values(data.weightEntries).run();
+    if (data.activityEntries?.length) tx.insert(activityEntries).values(data.activityEntries).run();
     if (data.settings.length) tx.insert(settings).values(data.settings).run();
   });
 }

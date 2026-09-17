@@ -1,6 +1,6 @@
 import { db } from "@/lib/db/client";
 import { settings } from "@/lib/db/schema";
-import { DietStartForm } from "@/components/settings/diet-start-form";
+import { DietSettingsForm } from "@/components/settings/diet-settings-form";
 import { ImportBackupForm } from "@/components/settings/import-backup-form";
 
 export default async function SettingsPage() {
@@ -15,11 +15,16 @@ export default async function SettingsPage() {
       </div>
 
       <div className="card p-4">
-        <h2 className="mb-1 text-sm font-bold">Diet period</h2>
+        <h2 className="mb-1 text-sm font-bold">Diet period &amp; calorie targets</h2>
         <p className="mb-3 text-xs text-muted">
-          Controls the Day X/56 progress bar and the default report range.
+          The start date drives the Day X/56 progress bar and the default report range. The
+          calorie figures drive the daily deficit shown on the calendar and reports.
         </p>
-        <DietStartForm currentDate={currentDate} />
+        <DietSettingsForm
+          currentDate={currentDate}
+          suggestedCalories={settingsRow?.suggestedCalories ?? null}
+          bmr={settingsRow?.bmr ?? null}
+        />
       </div>
 
       <div className="card p-4">

@@ -64,10 +64,19 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         </div>
       )}
 
-      <CalendarGrid weeks={weeks} daysData={daysData} currentMonth={month} todayStr={todayStr} />
+      <CalendarGrid
+        weeks={weeks}
+        daysData={daysData}
+        currentMonth={month}
+        todayStr={todayStr}
+        targets={{
+          suggestedCalories: settingsRow?.suggestedCalories ?? null,
+          bmr: settingsRow?.bmr ?? null,
+        }}
+      />
 
       <p className="text-xs text-muted">
-        🥤 drinks/food logged · 😄 mood · 💪 active day · 💊 medication · 🚽 symptom logged. Tap any
+        🥤 drinks/food logged · 😄 mood · 🏃 activity · 💊 medication · 🚽 symptom logged. Tap any
         day for the full breakdown.
       </p>
     </div>

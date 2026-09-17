@@ -80,7 +80,21 @@ export const weightEntries = sqliteTable("weight_entries", {
   createdAt: timestamp("created_at"),
 });
 
+export const activityEntries = sqliteTable("activity_entries", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  occurredAt: text("occurred_at").notNull(),
+  type: text("type", { enum: ["running", "walking"] }).notNull(),
+  distanceMiles: real("distance_miles").notNull(),
+  // Stored rather than recomputed on read, so a later weigh-in never silently
+  // rewrites the burn figure for a run you did months ago.
+  caloriesBurned: real("calories_burned").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at"),
+});
+
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   dietStartDate: text("diet_start_date").notNull(),
+  suggestedCalories: integer("suggested_calories"),
+  bmr: integer("bmr"),
 });

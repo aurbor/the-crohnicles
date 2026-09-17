@@ -12,22 +12,48 @@ export interface SettingsFormState {
   success?: boolean;
 }
 
-export async function updateDietStartDate(
+const optionalPositiveInt = z
+  .union([z.literal(""), z.coerce.number().int().positive()])
+  .transform((v) => (v === "" ? null : v));
+
+const settingsSchema = z.object({
+  dietStartDate: z.string().min(1, "Diet start date is required"),
+  suggestedCalories: optionalPositiveInt,
+  bmr: optionalPositiveInt,
+});
+
+export async function updateDietSettings(
   _prevState: SettingsFormState,
   formData: FormData
 ): Promise<SettingsFormState> {
   await requireAdmin();
 
-  const parsed = z.string().min(1, "Date is required").safeParse(formData.get("dietStartDate"));
+  const parsed = settingsSchema.safeParse({
+    dietStartDate: formData.get("dietStartDate"),
+    suggestedCalories: formData.get("suggestedCalories") ?? "",
+    bmr: formData.get("bmr") ?? "",
+  });
+
   if (!parsed.success) {
-    return { error: "Invalid date" };
+    return {
+      error:
+        parsed.error.issues[0]?.message === "Diet start date is required"
+          ? "Diet start date is required"
+          : "Calories and BMR must be whole numbers above 0 (or left blank).",
+    };
   }
+
+  const values = {
+    dietStartDate: parsed.data.dietStartDate,
+    suggestedCalories: parsed.data.suggestedCalories,
+    bmr: parsed.data.bmr,
+  };
 
   const [existing] = await db.select().from(settings).limit(1);
   if (existing) {
-    await db.update(settings).set({ dietStartDate: parsed.data });
+    await db.update(settings).set(values);
   } else {
-    await db.insert(settings).values({ dietStartDate: parsed.data });
+    await db.insert(settings).values(values);
   }
 
   revalidatePath("/settings");

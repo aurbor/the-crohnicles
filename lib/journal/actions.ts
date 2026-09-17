@@ -15,7 +15,6 @@ export interface JournalFormState {
 const journalSchema = z.object({
   date: z.string().min(1, "Date is required"),
   notes: z.string().trim().optional(),
-  activity: z.string().trim().optional(),
 });
 
 export async function saveJournalEntry(
@@ -27,27 +26,28 @@ export async function saveJournalEntry(
   const parsed = journalSchema.safeParse({
     date: formData.get("date"),
     notes: formData.get("notes") || undefined,
-    activity: formData.get("activity") || undefined,
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const { date, notes, activity } = parsed.data;
+  const { date, notes } = parsed.data;
   const now = new Date().toISOString();
 
+  // `activity` is deliberately left untouched: exercise now lives in its own
+  // activity entries, but older journals still hold free-text activity notes
+  // that should survive a re-save of the day's journal.
   await db
     .insert(journalEntries)
     .values({
       date,
       notes: notes || "",
-      activity: activity || null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: journalEntries.date,
-      set: { notes: notes || "", activity: activity || null, updatedAt: now },
+      set: { notes: notes || "", updatedAt: now },
     });
 
   revalidatePath("/journal");

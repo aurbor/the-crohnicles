@@ -2,23 +2,34 @@
 
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import type { DaySummary } from "@/lib/calendar/month-data";
+import { isActiveDay, type DaySummary } from "@/lib/calendar/day-summary";
 import { round1 } from "@/lib/nutrition";
+import { ACTIVITY_LABELS } from "@/lib/activity/estimate";
+import type { CalorieTargets } from "@/lib/calorie-targets";
 import { DayDetail } from "./day-detail";
 
 const MOOD_EMOJI: Record<string, string> = { happy: "😄", content: "😐", unhappy: "😣" };
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function activityTitle(day: DaySummary): string {
+  if (day.activities.length === 0) return day.legacyActivity ?? "Active day";
+  return day.activities
+    .map((a) => `${a.distanceMiles} mi ${ACTIVITY_LABELS[a.type].toLowerCase()}`)
+    .join(", ");
+}
 
 export function CalendarGrid({
   weeks,
   daysData,
   currentMonth,
   todayStr,
+  targets,
 }: {
   weeks: string[][];
   daysData: Record<string, DaySummary>;
   currentMonth: string;
   todayStr: string;
+  targets: CalorieTargets;
 }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const selectedDay = selectedDate ? daysData[selectedDate] : null;
@@ -66,7 +77,11 @@ export function CalendarGrid({
                     )}
                     <div className="flex items-center gap-1">
                       {lastMood && <span>{MOOD_EMOJI[lastMood]}</span>}
-                      {day.activity && <span title={day.activity}>💪</span>}
+                      {isActiveDay(day) && (
+                        <span title={activityTitle(day)}>
+                          {day.activities.length > 0 ? "🏃" : "💪"}
+                        </span>
+                      )}
                       {day.medications.length > 0 && <span title="Medication logged">💊</span>}
                       {day.symptoms.length > 0 && <span title="Symptom logged">🚽</span>}
                     </div>
@@ -83,7 +98,7 @@ export function CalendarGrid({
         <Dialog.Content className="card fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto p-6">
           <Dialog.Title className="sr-only">Day details</Dialog.Title>
           {selectedDay ? (
-            <DayDetail day={selectedDay} />
+            <DayDetail day={selectedDay} targets={targets} />
           ) : selectedDate ? (
             <DayDetail
               day={{
@@ -91,12 +106,15 @@ export function CalendarGrid({
                 diary: [],
                 medications: [],
                 symptoms: [],
+                activities: [],
                 journalNotes: null,
-                activity: null,
+                legacyActivity: null,
                 weightKg: null,
                 totals: { calories: 0, protein: 0, sugar: 0 },
+                caloriesBurned: 0,
                 moods: [],
               }}
+              targets={targets}
             />
           ) : null}
           <Dialog.Close asChild>

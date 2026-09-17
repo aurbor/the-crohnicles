@@ -1,6 +1,7 @@
 import { and, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
+  activityEntries,
   diaryEntries,
   items,
   medicationEntries,
@@ -10,64 +11,15 @@ import {
   weightEntries,
 } from "@/lib/db/schema";
 import { totalNutrition } from "@/lib/nutrition";
-import type { Mood } from "@/components/quick-add/mood-picker";
+import { emptyDay, type DaySummary } from "./day-summary";
 
-export interface DiaryLine {
-  id: number;
-  itemName: string;
-  itemType: "drink" | "food";
-  quantity: number;
-  calories: number;
-  protein: number;
-  sugar: number;
-  mood: Mood | null;
-  notes: string | null;
-  time: string;
-}
-
-export interface MedLine {
-  id: number;
-  name: string;
-  quantity: number;
-  strength: string;
-  form: string;
-  notes: string | null;
-  time: string;
-}
-
-export interface SymptomLine {
-  id: number;
-  bristolScale: number | null;
-  severity: number | null;
-  notes: string | null;
-  time: string;
-}
-
-export interface DaySummary {
-  date: string;
-  diary: DiaryLine[];
-  medications: MedLine[];
-  symptoms: SymptomLine[];
-  journalNotes: string | null;
-  activity: string | null;
-  weightKg: number | null;
-  totals: { calories: number; protein: number; sugar: number };
-  moods: Mood[];
-}
-
-function emptyDay(date: string): DaySummary {
-  return {
-    date,
-    diary: [],
-    medications: [],
-    symptoms: [],
-    journalNotes: null,
-    activity: null,
-    weightKg: null,
-    totals: { calories: 0, protein: 0, sugar: 0 },
-    moods: [],
-  };
-}
+export type {
+  ActivityLine,
+  DaySummary,
+  DiaryLine,
+  MedLine,
+  SymptomLine,
+} from "./day-summary";
 
 function dateKey(occurredAt: string): string {
   return occurredAt.slice(0, 10);
@@ -85,7 +37,7 @@ export async function getMonthData(
   const startBound = `${gridStart}T00:00:00`;
   const endBound = `${gridEnd}T00:00:00`;
 
-  const [diaryRows, medRows, symptomRows, journalRows, weightRows] = await Promise.all([
+  const [diaryRows, medRows, symptomRows, journalRows, weightRows, activityRows] = await Promise.all([
     db
       .select({
         id: diaryEntries.id,
@@ -125,6 +77,10 @@ export async function getMonthData(
       .where(and(gte(symptomEntries.occurredAt, startBound), lt(symptomEntries.occurredAt, endBound))),
     db.select().from(journalEntries).where(and(gte(journalEntries.date, gridStart), lt(journalEntries.date, gridEnd))),
     db.select().from(weightEntries).where(and(gte(weightEntries.date, gridStart), lt(weightEntries.date, gridEnd))),
+    db
+      .select()
+      .from(activityEntries)
+      .where(and(gte(activityEntries.occurredAt, startBound), lt(activityEntries.occurredAt, endBound))),
   ]);
 
   const days = new Map<string, DaySummary>();
@@ -136,6 +92,17 @@ export async function getMonthData(
     }
     return d;
   };
+
+  // Entries come back in insertion (id) order, so something logged late in the
+  // day but entered first would otherwise appear out of sequence. occurredAt is
+  // a naive "YYYY-MM-DDTHH:mm:ss" string, so lexical order is chronological.
+  const byOccurredAt = <T extends { occurredAt: string; id: number }>(a: T, b: T) =>
+    a.occurredAt.localeCompare(b.occurredAt) || a.id - b.id;
+
+  diaryRows.sort(byOccurredAt);
+  medRows.sort(byOccurredAt);
+  symptomRows.sort(byOccurredAt);
+  activityRows.sort(byOccurredAt);
 
   for (const row of diaryRows) {
     const date = dateKey(row.occurredAt);
@@ -183,10 +150,23 @@ export async function getMonthData(
     });
   }
 
+  for (const row of activityRows) {
+    const day = get(dateKey(row.occurredAt));
+    day.activities.push({
+      id: row.id,
+      type: row.type,
+      distanceMiles: row.distanceMiles,
+      caloriesBurned: row.caloriesBurned,
+      notes: row.notes,
+      time: timeKey(row.occurredAt),
+    });
+    day.caloriesBurned += row.caloriesBurned;
+  }
+
   for (const row of journalRows) {
     const day = get(row.date);
     day.journalNotes = row.notes || null;
-    day.activity = row.activity;
+    day.legacyActivity = row.activity;
   }
 
   for (const row of weightRows) {

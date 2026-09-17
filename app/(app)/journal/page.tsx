@@ -5,6 +5,7 @@ import { todayForDateInput } from "@/lib/datetime";
 import { DateNav } from "@/components/journal/date-nav";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { WeightQuickAdd } from "@/components/weight/weight-quick-add";
+import { DayActivity } from "./day-activity";
 import { RecentJournal } from "./recent-journal";
 import { RecentWeight } from "./recent-weight";
 
@@ -29,10 +30,11 @@ export default async function JournalPage({ searchParams }: PageProps<"/journal"
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="card p-4">
-          <JournalEditor date={date} notes={entry?.notes ?? ""} activity={entry?.activity ?? ""} />
+          <JournalEditor date={date} notes={entry?.notes ?? ""} />
         </div>
 
         <div className="flex flex-col gap-4">
+          <DayActivity date={date} />
           <div className="card p-4">
             <h2 className="mb-2 text-sm font-bold text-muted">Weigh-ins</h2>
             <WeightQuickAdd />
